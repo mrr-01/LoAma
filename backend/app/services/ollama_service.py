@@ -1,0 +1,140 @@
+# backend/app/services/ollama_service.py
+
+import requests
+import os
+import logging
+from typing import List, Dict, Optional
+
+logger = logging.getLogger(__name__)
+
+class OllamaConnectionError(Exception):
+    """Raised when we can't connect to Ollama"""
+    pass
+
+class OllamaService:
+    """
+    Handles all communication with Ollama.
+
+    Design: Single responsibility = talk to Ollama API only.
+    Doesn't know about conversations, databases, etc.
+    """
+
+    def __init__(self, base_url: Optional[str] = None):
+        self.base_url = base_url or os.getenv("OLLAMA_URL", "http://localhost:11434")
+        self.timeout = 300  # 5 minutes (models can be slow)
+
+    def _make_request(self, endpoint: str, method: str = "GET", json_data: Dict = None) -> Dict:
+        """
+        Helper method to make HTTP requests to Ollama.
+
+        Why extract this?
+        - All network calls go through one place
+        - Centralized error handling
+        - Easy to add logging/monitoring
+        """
+        url = f"{self.base_url}{endpoint}"
+
+        try:
+            logger.info(f"Ollama request: {method} {endpoint}")
+
+            if method == "GET":
+                response = requests.get(url, timeout=self.timeout)
+            elif method == "POST":
+                response = requests.post(url, json=json_data, timeout=self.timeout)
+            else:
+                raise ValueError(f"Unsupported method: {method}")
+
+            response.raise_for_status()  # Raise if status code is 4xx or 5xx
+            return response.json()
+
+        except requests.ConnectionError:
+            logger.error(f"Cannot connect to Ollama at {self.base_url}")
+            raise OllamaConnectionError(f"Cannot connect to Ollama at {self.base_url}")
+        except requests.Timeout:
+            logger.error(f"Ollama request timed out after {self.timeout}s")
+            raise OllamaConnectionError("Ollama request timed out")
+        except requests.HTTPError as e:
+            logger.error(f"Ollama returned error: {e}")
+            raise OllamaConnectionError(f"Ollama error: {e}")
+
+    def list_models(self) -> List[str]:
+        """
+        Get list of available models.
+
+        Returns: ["mistral", "llama2", ...]
+        Raises: OllamaConnectionError if Ollama unavailable
+        """
+        try:
+            response = self._make_request("/api/tags")
+            models = [model["name"] for model in response.get("models", [])]
+            logger.info(f"Found {len(models)} models available")
+            return models
+        except OllamaConnectionError:
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error listing models: {e}")
+            raise OllamaConnectionError(f"Failed to list models: {e}")
+
+    def generate(self, model: str, prompt: str, stream: bool = False) -> Dict:
+        """
+        Send prompt to model, get response.
+
+        Args:
+            model: e.g., "mistral:latest"
+            prompt: The question/prompt to send
+            stream: If False, waits for complete response
+
+        Returns:
+            {
+                "response": "The model's answer",
+                "context": [token_ids],  # For conversation continuation
+                "done": true,
+                "total_duration": milliseconds
+            }
+
+        Why separate prompt building?
+        - In the future, you might want to format prompts differently
+        - Easier to add prompt templates
+        """
+
+        try:
+            logger.info(f"Generating with model={model}")
+
+            response = self._make_request(
+                "/api/generate",
+                method="POST",
+                json_data={
+                    "model": model,
+                    "prompt": prompt,
+                    "stream": stream
+                }
+            )
+
+            logger.info(f"Generation completed in {response.get('total_duration')}ms")
+            return response
+
+        except OllamaConnectionError:
+            raise
+        except Exception as e:
+            logger.error(f"Error generating response: {e}")
+            raise OllamaConnectionError(f"Generation failed: {e}")
+
+
+# Usage example (for testing):
+if __name__ == "__main__":
+    service = OllamaService()
+
+    # # Test 1: Can we reach Ollama?
+    # try:
+    #     models = service.list_models()
+    #     print(f"Available models: {models}")
+    # except OllamaConnectionError as e:
+    #     print(f"Error: {e}")
+
+    # # Test 2: Can we generate a response?
+    # if models:
+    #     try:
+    #         response = service.generate(models[0], "Hello!")
+    #         print(f"Response: {response['response']}")
+    #     except OllamaConnectionError as e:
+    #         print(f"Error: {e}")
