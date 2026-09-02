@@ -59,35 +59,61 @@ class ChatService:
         prompt_lines.append("Assistant:")
         return "\n".join(prompt_lines)
 
-    def process_user_message(self, conversation_id: str, user_message: str) -> Dict:
-        conversation = self.get_conversation(conversation_id)
+    def process_user_message(self, conversation_id: str, message_content: str) -> Dict:
+        # 1. Fetch conversation
+        conversation = self.db.query(Conversation).filter(Conversation.id == conversation_id).first()
+        if not conversation:
+            raise ValueError(f"Conversation {conversation_id} not found")
 
-        # 1. Save user message
-        user_msg = self.add_message(conversation_id, "user", user_message)
+        # 2. Save user message
+        user_msg = Message(
+            conversation_id=conversation_id,
+            role="user",
+            content=message_content
+        )
+        self.db.add(user_msg)
 
-        # 2. Build complete prompt
-        prompt = self._build_prompt(conversation, user_message)
+        # 3. Auto-generate title if default
+        if conversation.title == "New Conversation":
+            conversation.title = self._generate_title(message_content)
 
-        # 3. Request completion from Ollama using the assigned model
-        ollama_response = self.ollama.generate(
+        conversation.updated_at = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(user_msg)
+        self.db.refresh(conversation)
+
+        # 4. Build prompt context and query Ollama
+        full_prompt = self._build_prompt(conversation, message_content)
+        response_data = self.ollama.generate(
             model=conversation.model_used,
-            prompt=prompt,
-            stream=False
+            prompt=full_prompt
         )
+        response_text = response_data.get("response", "").strip()
 
-        # 4. Save assistant response
-        assistant_msg = self.add_message(
-            conversation_id,
-            "assistant",
-            ollama_response.get("response", "")
+        # 5. Save assistant response
+        assistant_msg = Message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=response_text
         )
+        self.db.add(assistant_msg)
+        self.db.commit()
+        self.db.refresh(assistant_msg)
 
+        # Return matching schema structure expected by FastAPI response_model
         return {
-            "conversation_id": conversation_id,
+            "conversation_id": conversation.id,
             "user_message": user_msg.to_dict(),
             "assistant_message": assistant_msg.to_dict(),
             "generated_at": datetime.utcnow().isoformat()
         }
+
+    def _generate_title(self, prompt: str) -> str:
+        """Simple title generator using the first line or truncated user prompt."""
+        clean_prompt = prompt.strip().split("\n")[0]
+        if len(clean_prompt) > 35:
+            return clean_prompt[:35].strip() + "..."
+        return clean_prompt or "New Conversation"
 
     def get_conversation_history(self, conversation_id: str, limit: int = 50) -> List[Dict]:
         self.get_conversation(conversation_id)
