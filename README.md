@@ -31,3 +31,52 @@ LoAMA is a privacy-focused, locally-hosted LLM chat interface built with a FastA
           │
           ▼ (Port 11434)
    [ Ollama AI Daemon ] ───► [ Local Models (Gemma / Qwen) ]
+
+
+## 🚀 Quick Start Guide
+
+Follow these steps to set up and run LoAMA on your local machine.
+
+### Prerequisites
+
+Ensure you have the following installed:
+- **Python 3.10+**
+- **Ollama** ([Download & Install Ollama](https://ollama.com/))
+- **Git**
+
+---
+
+### 1. Clone the Repository
+
+```bash
+git clone [https://github.com/mrr-01/LoAma.git](https://github.com/mrr-01/LoAma.git)
+cd LoAma
+
+## 3. Setup and Start the Backend
+cd backend
+
+# Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the backend API server
+PYTHONPATH=. python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+The API will now be running at http://localhost:8000. You can inspect the interactive docs at http://localhost:8000/docs
+
+## 4. Start The FRONTEND
+
+cd frontend
+
+# Serve static frontend files
+python3 -m http.server 3000
+
+## 5. Open The Application
+Launch your browser and go to:
+
+👉 http://localhost:3000
+
+Send a message in the chat box to begin chatting with your local model!
