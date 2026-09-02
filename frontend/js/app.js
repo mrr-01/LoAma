@@ -1,5 +1,14 @@
 // frontend/js/app.js
 
+// Configure marked parser options
+marked.setOptions({
+    highlight: function(code, lang) {
+        const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+        return hljs.highlight(code, { language }).value;
+    },
+    breaks: true // Enables line breaks on single newlines
+});
+
 let currentConversationId = null;
 
 const chatMessagesDiv = document.getElementById('chatMessages');
@@ -96,7 +105,14 @@ function displayMessage(role, content) {
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
-    contentDiv.textContent = content;
+
+    if (role === 'assistant') {
+            // Parse raw Markdown into formatted HTML
+            contentDiv.innerHTML = marked.parse(content);
+        } else {
+            // Keep user messages as plain text to prevent XSS attacks
+            contentDiv.textContent = content;
+        }
 
     messageDiv.appendChild(contentDiv);
     chatMessagesDiv.appendChild(messageDiv);
