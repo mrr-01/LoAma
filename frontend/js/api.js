@@ -1,3 +1,5 @@
+// frontend/js/api.js
+
 const API_URL = 'http://localhost:8000/api';
 
 class OllamaAPI {
@@ -11,13 +13,11 @@ class OllamaAPI {
         return await response.json();
     }
 
-    // 2. Send message to backend chat endpoint (non-streaming fallback)
+    // 2. Non-streaming message fallback
     async sendMessage(conversationId, message, model = 'gemma3-1b:latest') {
         const response = await fetch(`${API_URL}/chat`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 conversation_id: conversationId,
                 message: message,
@@ -33,19 +33,19 @@ class OllamaAPI {
         return await response.json();
     }
 
-    // 3. Stream message tokens directly from Ollama
-    // Inside OllamaAPI class in frontend/js/api.js
-
-    async streamMessage(conversationId, message, model, onChunk, signal) {
+    // 3. Stream message tokens directly from Ollama (with abort signal & config support)
+    async streamMessage(conversationId, message, model, onChunk, signal = null, config = {}) {
         const response = await fetch(`${API_URL}/chat/stream`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 conversation_id: conversationId,
                 message: message,
-                model: model
+                model: model,
+                system_prompt: config.systemPrompt || null,
+                format_json: config.jsonFormat || false
             }),
-            signal: signal // Attach the AbortSignal
+            signal: signal
         });
 
         if (!response.ok) throw new Error('Streaming failed');

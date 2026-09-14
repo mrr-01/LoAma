@@ -461,3 +461,62 @@ body {
 #stopBtn:hover {
     opacity: 0.85;
 }
+
+/* Ensure relative positioning on wrapper */
+.input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+/* Floating Slash Command Menu */
+.command-menu {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    background-color: #1e222b;
+    border: 1px solid #343b48;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+    z-index: 100;
+}
+
+.command-item {
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-size: 13px;
+    color: #e2e8f0;
+    border-bottom: 1px solid #2a2f3d;
+    transition: background-color 0.15s ease;
+}
+
+.command-item:last-child {
+    border-bottom: none;
+}
+
+.command-item:hover {
+    background-color: #2a303c;
+    color: #60a5fa;
+}
+
+/* Hide scrollbar for Chrome, Safari, and Opera */
+.conversations-list::-webkit-scrollbar,
+.chat-messages::-webkit-scrollbar,
+.command-menu::-webkit-scrollbar,
+textarea#messageInput::-webkit-scrollbar {
+    display: none;
+}
+
+/* Hide scrollbar for IE, Edge, and Firefox */
+.conversations-list,
+.chat-messages,
+.command-menu,
+textarea#messageInput {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
