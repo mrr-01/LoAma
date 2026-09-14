@@ -1,12 +1,12 @@
 // frontend/js/app.js
 
-// Configure marked parser options
+// Configure Marked to use Highlight.js for code snippets
 marked.setOptions({
     highlight: function(code, lang) {
         const language = hljs.getLanguage(lang) ? lang : 'plaintext';
         return hljs.highlight(code, { language }).value;
     },
-    breaks: true // Enables line breaks on single newlines
+    breaks: true
 });
 
 let currentConversationId = null;
@@ -17,7 +17,7 @@ const sendBtn = document.getElementById('sendBtn');
 const newChatBtn = document.getElementById('newChatBtn');
 const conversationsListDiv = document.getElementById('conversationsList');
 
-// Load conversations on startup
+// Initialize conversations on application startup
 loadConversations();
 
 // Event listeners
@@ -30,6 +30,7 @@ messageInput.addEventListener('keypress', (e) => {
 });
 newChatBtn.addEventListener('click', startNewChat);
 
+// 1. Fetch all conversations from backend SQLite database
 async function loadConversations() {
     try {
         const conversations = await api.getConversations();
@@ -37,8 +38,8 @@ async function loadConversations() {
 
         conversations.forEach(conv => {
             const div = document.createElement('div');
-            div.className = 'conversation-item';
-            div.textContent = conv.title;
+            div.className = `conversation-item ${conv.id === currentConversationId ? 'active' : ''}`;
+            div.textContent = conv.title || 'New Conversation';
             div.onclick = () => loadConversation(conv.id);
             conversationsListDiv.appendChild(div);
         });
@@ -47,8 +48,10 @@ async function loadConversations() {
     }
 }
 
+// 2. Load selected conversation message history
 async function loadConversation(conversationId) {
     currentConversationId = conversationId;
+    loadConversations(); // Update active highlight state in sidebar
 
     try {
         const data = await api.getMessages(conversationId);
@@ -62,6 +65,7 @@ async function loadConversation(conversationId) {
     }
 }
 
+// 3. Send message to backend API
 async function sendMessage() {
     const message = messageInput.value.trim();
     if (!message) return;
@@ -73,32 +77,35 @@ async function sendMessage() {
 
     // Show loading indicator
     const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'loading';
-    loadingDiv.textContent = 'Thinking...';
+    loadingDiv.className = 'loading message assistant';
+    loadingDiv.innerHTML = '<div class="message-content">Thinking...</div>';
     chatMessagesDiv.appendChild(loadingDiv);
+    chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
 
     try {
-      const response = await api.sendMessage(currentConversationId, message, 'gemma3-1b:latest');
+        const response = await api.sendMessage(currentConversationId, message, 'gemma3-1b:latest');
+
         // Remove loading indicator
         loadingDiv.remove();
 
-        // Update conversation ID if new
+        // Update active conversation ID if it was a new chat
         if (!currentConversationId) {
             currentConversationId = response.conversation_id;
         }
 
-        // Display assistant response
+        // Display formatted assistant response
         displayMessage('assistant', response.assistant_message.content);
 
-        // Refresh conversation list
-        loadConversations();
+        // Refresh sidebar so title updates from database
+        await loadConversations();
 
     } catch (error) {
-        loadingDiv.textContent = `Error: ${error.message}`;
+        loadingDiv.innerHTML = `<div class="message-content">Error: ${error.message}</div>`;
         console.error('Failed to send message:', error);
     }
 }
 
+// 4. Render message with Markdown parsing
 function displayMessage(role, content) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
@@ -107,12 +114,12 @@ function displayMessage(role, content) {
     contentDiv.className = 'message-content';
 
     if (role === 'assistant') {
-            // Parse raw Markdown into formatted HTML
-            contentDiv.innerHTML = marked.parse(content);
-        } else {
-            // Keep user messages as plain text to prevent XSS attacks
-            contentDiv.textContent = content;
-        }
+        // Parse raw Markdown into formatted HTML
+        contentDiv.innerHTML = marked.parse(content);
+    } else {
+        // Keep user text safe from XSS injection
+        contentDiv.textContent = content;
+    }
 
     messageDiv.appendChild(contentDiv);
     chatMessagesDiv.appendChild(messageDiv);
@@ -121,9 +128,11 @@ function displayMessage(role, content) {
     chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
 }
 
+// 5. Reset UI for a fresh chat session
 function startNewChat() {
     currentConversationId = null;
     chatMessagesDiv.innerHTML = '';
     messageInput.value = '';
     messageInput.focus();
+    loadConversations();
 }
