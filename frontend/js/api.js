@@ -34,7 +34,9 @@ class OllamaAPI {
     }
 
     // 3. Stream message tokens directly from Ollama
-    async streamMessage(conversationId, message, model, onChunk) {
+    // Inside OllamaAPI class in frontend/js/api.js
+
+    async streamMessage(conversationId, message, model, onChunk, signal) {
         const response = await fetch(`${API_URL}/chat/stream`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -42,7 +44,8 @@ class OllamaAPI {
                 conversation_id: conversationId,
                 message: message,
                 model: model
-            })
+            }),
+            signal: signal // Attach the AbortSignal
         });
 
         if (!response.ok) throw new Error('Streaming failed');

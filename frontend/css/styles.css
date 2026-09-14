@@ -442,3 +442,22 @@ body {
     pointer-events: none;
     color: var(--text-secondary);
 }
+
+#stopBtn {
+    background-color: var(--text-primary);
+    border: none;
+    color: var(--bg-main);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s ease;
+    flex-shrink: 0;
+}
+
+#stopBtn:hover {
+    opacity: 0.85;
+}

@@ -1,5 +1,9 @@
 // frontend/js/app.js
 
+// State variables
+let currentConversationId = null;
+let currentAbortController = null;
+
 // Configure Marked to use Highlight.js for code snippets
 marked.setOptions({
     highlight: function(code, lang) {
@@ -9,15 +13,14 @@ marked.setOptions({
     breaks: true
 });
 
-let currentConversationId = null;
-
 // DOM Elements
 const chatMessagesDiv = document.getElementById('chatMessages');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
+const stopBtn = document.getElementById('stopBtn');
 const newChatBtn = document.getElementById('newChatBtn');
 const conversationsListDiv = document.getElementById('conversationsList');
-const modelSelector = document.getElementById('modelSelector'); // Added missing element reference
+const modelSelector = document.getElementById('modelSelector');
 
 // Initialize app on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -27,6 +30,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Event listeners
 if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+if (stopBtn) {
+    stopBtn.addEventListener('click', () => {
+        if (currentAbortController) {
+            currentAbortController.abort();
+            currentAbortController = null;
+        }
+    });
+}
 if (messageInput) {
     messageInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -37,6 +48,17 @@ if (messageInput) {
 }
 if (newChatBtn) newChatBtn.addEventListener('click', startNewChat);
 
+// Toggle UI between Send and Stop state
+function toggleGeneratingState(isGenerating) {
+    if (isGenerating) {
+        if (sendBtn) sendBtn.style.display = 'none';
+        if (stopBtn) stopBtn.style.display = 'flex';
+    } else {
+        if (sendBtn) sendBtn.style.display = 'flex';
+        if (stopBtn) stopBtn.style.display = 'none';
+    }
+}
+
 // 1. Fetch all conversations from backend SQLite database
 async function loadConversations() {
     try {
@@ -44,66 +66,66 @@ async function loadConversations() {
         conversationsListDiv.innerHTML = '';
 
         if (Array.isArray(conversations) && conversations.length > 0) {
-          conversations.forEach(conv => {
-              const div = document.createElement('div');
-              div.className = `conversation-item ${conv.id === currentConversationId ? 'active' : ''}`;
+            conversations.forEach(conv => {
+                const div = document.createElement('div');
+                div.className = `conversation-item ${conv.id === currentConversationId ? 'active' : ''}`;
 
-              // Title element
-              const titleSpan = document.createElement('span');
-              titleSpan.className = 'conversation-title';
-              titleSpan.textContent = conv.title || 'New Conversation';
-              div.appendChild(titleSpan);
+                // Title element
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'conversation-title';
+                titleSpan.textContent = conv.title || 'New Conversation';
+                div.appendChild(titleSpan);
 
-              // Delete Button (Trash Icon)
-              const deleteBtn = document.createElement('button');
-              deleteBtn.className = 'delete-chat-btn';
-              deleteBtn.title = 'Delete chat';
-              deleteBtn.innerHTML = `
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <polyline points="3 6 5 6 21 6"></polyline>
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-              `;
+                // Delete Button (Trash Icon)
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-chat-btn';
+                deleteBtn.title = 'Delete chat';
+                deleteBtn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                `;
 
-              // Handle delete click (e.stopPropagation prevents switching to conversation)
-              deleteBtn.onclick = (e) => {
-                  e.stopPropagation();
-                  handleDeleteConversation(conv.id);
-              };
+                // Handle delete click (e.stopPropagation prevents switching to conversation)
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    handleDeleteConversation(conv.id);
+                };
 
-              div.appendChild(deleteBtn);
+                div.appendChild(deleteBtn);
 
-              // Handle selecting conversation
-              div.onclick = () => loadConversation(conv.id);
+                // Handle selecting conversation
+                div.onclick = () => loadConversation(conv.id);
 
-              conversationsListDiv.appendChild(div);
-          });
-      } else {
-          conversationsListDiv.innerHTML = '<div class="history-label" style="text-transform:none;">No chats found</div>';
-      }
-  } catch (error) {
-      console.error('Failed to load conversations:', error);
-  }
-  }
-
-        // Handler to delete conversation from backend and reset state if needed
-        async function handleDeleteConversation(conversationId) {
-            if (!confirm('Are you sure you want to delete this chat?')) return;
-
-            try {
-                await api.deleteConversation(conversationId);
-
-                // If deleted chat was currently open, reset the main view
-                if (currentConversationId === conversationId) {
-                    startNewChat();
-                } else {
-                    await loadConversations();
-                }
-            } catch (error) {
-                console.error('Failed to delete conversation:', error);
-                alert(`Could not delete conversation: ${error.message}`);
-            }
+                conversationsListDiv.appendChild(div);
+            });
+        } else {
+            conversationsListDiv.innerHTML = '<div class="history-label" style="text-transform:none;">No chats found</div>';
         }
+    } catch (error) {
+        console.error('Failed to load conversations:', error);
+    }
+}
+
+// Handler to delete conversation from backend and reset state if needed
+async function handleDeleteConversation(conversationId) {
+    if (!confirm('Are you sure you want to delete this chat?')) return;
+
+    try {
+        await api.deleteConversation(conversationId);
+
+        // If deleted chat was currently open, reset the main view
+        if (currentConversationId === conversationId) {
+            startNewChat();
+        } else {
+            await loadConversations();
+        }
+    } catch (error) {
+        console.error('Failed to delete conversation:', error);
+        alert(`Could not delete conversation: ${error.message}`);
+    }
+}
 
 // 2. Load selected conversation message history & update header model dropdown
 async function loadConversation(conversationId) {
@@ -114,16 +136,15 @@ async function loadConversation(conversationId) {
         const data = await api.getMessages(conversationId);
         chatMessagesDiv.innerHTML = '';
 
-        // 1. Render messages
+        // Render messages
         if (data.messages) {
             data.messages.forEach(msg => {
                 displayMessage(msg.role, msg.content);
             });
         }
 
-        // 2. Sync header dropdown to conversation's stored model_used
+        // Sync header dropdown to conversation's stored model_used
         if (data.model_used && modelSelector) {
-            // Check if option exists in dropdown, add it if missing
             let optionExists = Array.from(modelSelector.options).some(opt => opt.value === data.model_used);
             if (!optionExists) {
                 const opt = document.createElement('option');
@@ -138,48 +159,64 @@ async function loadConversation(conversationId) {
         console.error('Failed to load conversation:', error);
     }
 }
-// 3. Send message to backend API
+
+// 3. Send message with live stream and abort control
 async function sendMessage() {
     const message = messageInput.value.trim();
     if (!message) return;
 
-    // Safely get selected model with fallback
     const selectedModel = (modelSelector && modelSelector.value) ? modelSelector.value : 'gemma3-1b:latest';
-
     messageInput.value = '';
 
-    // Display user message immediately
+    // 1. Display user message immediately
     displayMessage('user', message);
 
-    // Show loading indicator
-    const loadingDiv = document.createElement('div');
-    loadingDiv.className = 'loading message assistant';
-    loadingDiv.innerHTML = '<div class="message-content">Thinking...</div>';
-    chatMessagesDiv.appendChild(loadingDiv);
-    chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+    // 2. Create empty assistant bubble for live streaming
+    const assistantMessageDiv = document.createElement('div');
+    assistantMessageDiv.className = 'message assistant';
+
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    assistantMessageDiv.appendChild(contentDiv);
+
+    chatMessagesDiv.appendChild(assistantMessageDiv);
+
+    let fullText = '';
+
+    // Create new AbortController and switch button to Stop state
+    currentAbortController = new AbortController();
+    toggleGeneratingState(true);
 
     try {
-        // Pass selected model to API call
-        const response = await api.sendMessage(currentConversationId, message, selectedModel);
+        // 3. Stream chunks and re-render Markdown live
+        const result = await api.streamMessage(
+            currentConversationId,
+            message,
+            selectedModel,
+            (chunk) => {
+                fullText += chunk;
+                contentDiv.innerHTML = marked.parse(fullText);
+                chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+            },
+            currentAbortController.signal
+        );
 
-        // Remove loading indicator
-        loadingDiv.remove();
-
-        // Update active conversation ID if it was a new chat
-        if (!currentConversationId) {
-            currentConversationId = response.conversation_id;
+        if (!currentConversationId && result.conversation_id) {
+            currentConversationId = result.conversation_id;
         }
 
-        // Display formatted assistant response
-        displayMessage('assistant', response.assistant_message.content);
-
-        // Refresh sidebar so title updates from database
         await loadConversations();
 
     } catch (error) {
-        loadingDiv.remove();
-        displayMessage('assistant', `**Error sending message:** ${error.message}`);
-        console.error('Failed to send message:', error);
+        if (error.name === 'AbortError') {
+            contentDiv.innerHTML += ' <em>[Generation stopped]</em>';
+        } else {
+            contentDiv.innerHTML = `<em>Error: ${error.message}</em>`;
+            console.error('Streaming error:', error);
+        }
+    } finally {
+        currentAbortController = null;
+        toggleGeneratingState(false);
     }
 }
 
@@ -192,17 +229,14 @@ function displayMessage(role, content) {
     contentDiv.className = 'message-content';
 
     if (role === 'assistant') {
-        // Parse raw Markdown into formatted HTML
         contentDiv.innerHTML = marked.parse(content);
     } else {
-        // Keep user text safe from XSS injection
         contentDiv.textContent = content;
     }
 
     messageDiv.appendChild(contentDiv);
     chatMessagesDiv.appendChild(messageDiv);
 
-    // Scroll to bottom
     chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
 }
 
