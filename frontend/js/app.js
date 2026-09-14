@@ -43,18 +43,67 @@ async function loadConversations() {
         const conversations = await api.getConversations();
         conversationsListDiv.innerHTML = '';
 
-        conversations.forEach(conv => {
-            const div = document.createElement('div');
-            div.className = `conversation-item ${conv.id === currentConversationId ? 'active' : ''}`;
-            div.textContent = conv.title || 'New Conversation';
-            div.onclick = () => loadConversation(conv.id);
-            conversationsListDiv.appendChild(div);
-        });
-    } catch (error) {
-        console.error('Failed to load conversations:', error);
-    }
-}
+        if (Array.isArray(conversations) && conversations.length > 0) {
+          conversations.forEach(conv => {
+              const div = document.createElement('div');
+              div.className = `conversation-item ${conv.id === currentConversationId ? 'active' : ''}`;
 
+              // Title element
+              const titleSpan = document.createElement('span');
+              titleSpan.className = 'conversation-title';
+              titleSpan.textContent = conv.title || 'New Conversation';
+              div.appendChild(titleSpan);
+
+              // Delete Button (Trash Icon)
+              const deleteBtn = document.createElement('button');
+              deleteBtn.className = 'delete-chat-btn';
+              deleteBtn.title = 'Delete chat';
+              deleteBtn.innerHTML = `
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+              `;
+
+              // Handle delete click (e.stopPropagation prevents switching to conversation)
+              deleteBtn.onclick = (e) => {
+                  e.stopPropagation();
+                  handleDeleteConversation(conv.id);
+              };
+
+              div.appendChild(deleteBtn);
+
+              // Handle selecting conversation
+              div.onclick = () => loadConversation(conv.id);
+
+              conversationsListDiv.appendChild(div);
+          });
+      } else {
+          conversationsListDiv.innerHTML = '<div class="history-label" style="text-transform:none;">No chats found</div>';
+      }
+  } catch (error) {
+      console.error('Failed to load conversations:', error);
+  }
+  }
+
+        // Handler to delete conversation from backend and reset state if needed
+        async function handleDeleteConversation(conversationId) {
+            if (!confirm('Are you sure you want to delete this chat?')) return;
+
+            try {
+                await api.deleteConversation(conversationId);
+
+                // If deleted chat was currently open, reset the main view
+                if (currentConversationId === conversationId) {
+                    startNewChat();
+                } else {
+                    await loadConversations();
+                }
+            } catch (error) {
+                console.error('Failed to delete conversation:', error);
+                alert(`Could not delete conversation: ${error.message}`);
+            }
+        }
 
 // 2. Load selected conversation message history & update header model dropdown
 async function loadConversation(conversationId) {
