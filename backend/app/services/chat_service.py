@@ -49,23 +49,33 @@ class ChatService:
         self.db.refresh(message)
         return message
 
-    def _build_prompt(self, conversation: Conversation, current_message: str) -> str:
+    def _build_prompt(self, conversation: Conversation) -> str:
+        """Constructs prompt using committed conversation messages without duplicating the latest user input."""
         prompt_lines = []
+        # Take the last 10 messages from database history
         recent_messages = conversation.messages[-10:]
         for msg in recent_messages:
             role_label = "User" if msg.role == "user" else "Assistant"
             prompt_lines.append(f"{role_label}: {msg.content}")
-        prompt_lines.append(f"User: {current_message}")
+
         prompt_lines.append("Assistant:")
         return "\n".join(prompt_lines)
 
-    def process_user_message(self, conversation_id: str, message_content: str) -> Dict:
+    def process_user_message(
+        self,
+        conversation_id: str,
+        message_content: str,
+        model_name: Optional[str] = None
+    ) -> Dict:
         # 1. Fetch conversation
-        conversation = self.db.query(Conversation).filter(Conversation.id == conversation_id).first()
-        if not conversation:
-            raise ValueError(f"Conversation {conversation_id} not found")
+        conversation = self.get_conversation(conversation_id)
 
-        # 2. Save user message
+        # 2. Determine model (passed model_name overrides stored conversation model)
+        selected_model = model_name or conversation.model_used or "gemma3-1b:latest"
+        if model_name and conversation.model_used != model_name:
+            conversation.model_used = model_name
+
+        # 3. Save user message to database
         user_msg = Message(
             conversation_id=conversation_id,
             role="user",
@@ -73,7 +83,7 @@ class ChatService:
         )
         self.db.add(user_msg)
 
-        # 3. Auto-generate title if default
+        # 4. Auto-generate title if default
         if conversation.title == "New Conversation":
             conversation.title = self._generate_title(message_content)
 
@@ -82,15 +92,17 @@ class ChatService:
         self.db.refresh(user_msg)
         self.db.refresh(conversation)
 
-        # 4. Build prompt context and query Ollama
-        full_prompt = self._build_prompt(conversation, message_content)
+        # 5. Build prompt context (conversation already includes user_msg)
+        full_prompt = self._build_prompt(conversation)
+
+        # Query Ollama
         response_data = self.ollama.generate(
-            model=conversation.model_used,
+            model=selected_model,
             prompt=full_prompt
         )
         response_text = response_data.get("response", "").strip()
 
-        # 5. Save assistant response
+        # 6. Save assistant response
         assistant_msg = Message(
             conversation_id=conversation_id,
             role="assistant",
@@ -100,7 +112,6 @@ class ChatService:
         self.db.commit()
         self.db.refresh(assistant_msg)
 
-        # Return matching schema structure expected by FastAPI response_model
         return {
             "conversation_id": conversation.id,
             "user_message": user_msg.to_dict(),

@@ -367,3 +367,45 @@ body {
     color: var(--text-secondary);
     font-style: italic;
 }
+/* Model Selector Dropdown */
+.model-select-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    transition: border-color 0.15s ease;
+}
+
+.model-select-wrapper:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.model-select {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 16px;
+}
+
+.model-select option {
+    background-color: var(--bg-sidebar);
+    color: var(--text-primary);
+}
+
+.dropdown-icon {
+    position: absolute;
+    right: 10px;
+    pointer-events: none;
+    color: var(--text-secondary);
+}

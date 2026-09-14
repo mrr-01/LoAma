@@ -31,6 +31,7 @@ LoAMA is a privacy-focused, locally-hosted LLM chat interface built with a FastA
           │
           ▼ (Port 11434)
    [ Ollama AI Daemon ] ───► [ Local Models (Gemma / Qwen) ]
+   ```
 
 
 ## 🚀 Quick Start Guide

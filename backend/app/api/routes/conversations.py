@@ -34,13 +34,20 @@ async def get_conversation_messages(
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
-    """Get message history for a conversation"""
+    """Get message history and model details for a conversation"""
     try:
         ollama_service = OllamaService()
         chat_service = ChatService(db, ollama_service)
 
+        # Retrieve conversation metadata
+        conversation = chat_service.get_conversation(conversation_id)
         messages = chat_service.get_conversation_history(conversation_id, limit)
-        return {"messages": messages}
+
+        return {
+            "conversation_id": conversation.id,
+            "model_used": conversation.model_used,  # <--- Expose model_used to frontend
+            "messages": messages
+        }
 
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
