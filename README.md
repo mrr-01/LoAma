@@ -55,7 +55,8 @@ cd LoAma
 
 ```
 ## 2. Setup and Start the Backend
-```cd backend
+```
+cd backend
 ```
 
 # Create and activate a virtual environment
