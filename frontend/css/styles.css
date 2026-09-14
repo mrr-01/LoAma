@@ -520,3 +520,81 @@ textarea#messageInput::-webkit-scrollbar {
 textarea#messageInput {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
+}
+
+/* Container for input area */
+.input-box {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-secondary, #1e222b);
+    border: 1px solid var(--border-color, #2d333f);
+    border-radius: 12px;
+    padding: 8px 12px;
+    gap: 8px;
+}
+
+/* Document Pill Container (Stack above textarea) */
+.doc-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: rgba(96, 165, 250, 0.12);
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    color: #60a5fa;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    max-width: fit-content;
+}
+
+.doc-pill button {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+}
+
+.doc-pill button:hover {
+    color: #ef4444;
+}
+
+/* Action Controls Row (Textarea + Buttons) */
+.input-controls-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.input-controls-row textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary, #e2e8f0);
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    font-size: 14px;
+}
+
+/* Attached PDF badge inside user chat bubble */
+.user-attached-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background-color: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.user-attached-file svg {
+    flex-shrink: 0;
+}

@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import os
+from app.api.routes import documents
+
 
 # Set up logging
 logging.basicConfig(
@@ -28,9 +30,10 @@ app.add_middleware(
 )
 
 # Include routes
-from app.api.routes import chat, conversations
+from app.api.routes import chat, conversations, documents
 app.include_router(chat.router)
 app.include_router(conversations.router)
+app.include_router(documents.router)
 
 # Health check endpoint
 @app.get("/health")

@@ -11,7 +11,8 @@ const sessionConfig = {
     wordWrap: true,
     jsonFormat: false,
     verbose: false,
-    think: false
+    think: false,
+    activeDocument: null
 };
 
 // Available slash commands definition
@@ -47,6 +48,9 @@ const newChatBtn = document.getElementById('newChatBtn');
 const conversationsListDiv = document.getElementById('conversationsList');
 const modelSelector = document.getElementById('modelSelector');
 const commandMenu = document.getElementById('commandMenu');
+const attachBtn = document.getElementById('attachBtn');
+const pdfFileInput = document.getElementById('pdfFileInput');
+const removeDocBtn = document.getElementById('removeDocBtn');
 
 // Initialize app on DOM ready
 document.addEventListener('DOMContentLoaded', () => {
@@ -54,7 +58,44 @@ document.addEventListener('DOMContentLoaded', () => {
     loadConversations();
 });
 
-// Event listeners
+// PDF Attachment Event Handlers
+if (attachBtn && pdfFileInput) {
+    attachBtn.addEventListener('click', () => pdfFileInput.click());
+
+    pdfFileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            const data = await api.uploadPDF(file);
+
+            sessionConfig.activeDocument = {
+                filename: data.filename,
+                text: data.extracted_text
+            };
+
+            const docPillName = document.getElementById('docPillName');
+            const attachedDocPill = document.getElementById('attachedDocPill');
+
+            if (docPillName) docPillName.textContent = `📄 ${data.filename}`;
+            if (attachedDocPill) attachedDocPill.style.display = 'inline-flex';
+
+            pdfFileInput.value = '';
+        } catch (error) {
+            alert(`Failed to attach PDF: ${error.message}`);
+        }
+    });
+}
+
+if (removeDocBtn) {
+    removeDocBtn.addEventListener('click', () => {
+        sessionConfig.activeDocument = null;
+        const attachedDocPill = document.getElementById('attachedDocPill');
+        if (attachedDocPill) attachedDocPill.style.display = 'none';
+    });
+}
+
+// Global Event Listeners
 if (sendBtn) sendBtn.addEventListener('click', sendMessage);
 
 if (stopBtn) {
@@ -67,7 +108,6 @@ if (stopBtn) {
 }
 
 if (messageInput) {
-    // Listen for Enter key to submit
     messageInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -76,7 +116,6 @@ if (messageInput) {
         }
     });
 
-    // Listen for real-time typing to trigger slash menu
     messageInput.addEventListener('input', (e) => {
         const val = e.target.value;
         if (val.startsWith('/')) {
@@ -89,14 +128,13 @@ if (messageInput) {
 
 if (newChatBtn) newChatBtn.addEventListener('click', startNewChat);
 
-// Close slash menu on outside click
 document.addEventListener('click', (e) => {
     if (e.target !== messageInput && e.target !== commandMenu) {
         hideCommandMenu();
     }
 });
 
-// Show autocomplete slash menu
+// UI Helper Functions
 function showCommandMenu(filterText) {
     if (!commandMenu) return;
 
@@ -129,7 +167,6 @@ function hideCommandMenu() {
     if (commandMenu) commandMenu.style.display = 'none';
 }
 
-// Toggle UI state between Send and Stop
 function toggleGeneratingState(isGenerating) {
     if (isGenerating) {
         if (sendBtn) sendBtn.style.display = 'none';
@@ -140,7 +177,6 @@ function toggleGeneratingState(isGenerating) {
     }
 }
 
-// Parse and execute slash commands
 function handleSlashCommand(input) {
     const parts = input.trim().split(' ');
     const mainCmd = parts[0].toLowerCase();
@@ -156,29 +192,24 @@ function handleSlashCommand(input) {
             sessionConfig.systemPrompt = args || null;
             responseMsg = args ? `System message updated: "${args}"` : 'System message cleared.';
             break;
-
         case 'history':
             sessionConfig.historyEnabled = true;
             responseMsg = 'Conversation history enabled.';
             break;
-
         case 'nohistory':
             sessionConfig.historyEnabled = false;
             responseMsg = 'Conversation history disabled for upcoming prompts.';
             break;
-
         case 'wordwrap':
             sessionConfig.wordWrap = true;
             chatMessagesDiv.style.whiteSpace = 'pre-wrap';
             responseMsg = 'Wordwrap enabled.';
             break;
-
         case 'nowordwrap':
             sessionConfig.wordWrap = false;
             chatMessagesDiv.style.whiteSpace = 'pre';
             responseMsg = 'Wordwrap disabled.';
             break;
-
         case 'format':
             if (args.toLowerCase() === 'json') {
                 sessionConfig.jsonFormat = true;
@@ -187,32 +218,26 @@ function handleSlashCommand(input) {
                 responseMsg = 'Unsupported format. Use `/set format json`.';
             }
             break;
-
         case 'noformat':
             sessionConfig.jsonFormat = false;
             responseMsg = 'Formatting constraints disabled.';
             break;
-
         case 'verbose':
             sessionConfig.verbose = true;
             responseMsg = 'Verbose stats enabled.';
             break;
-
         case 'quiet':
             sessionConfig.verbose = false;
             responseMsg = 'Verbose stats disabled.';
             break;
-
         case 'think':
             sessionConfig.think = true;
             responseMsg = 'Model thinking enabled.';
             break;
-
         case 'nothink':
             sessionConfig.think = false;
             responseMsg = 'Model thinking disabled.';
             break;
-
         default:
             responseMsg = `Unknown command: ${input}. Available commands: /set system, /set history, /set nohistory, /set wordwrap, /set nowordwrap, /set format json, /set noformat, /set verbose, /set quiet, /set think, /set nothink.`;
             break;
@@ -222,7 +247,6 @@ function handleSlashCommand(input) {
     return true;
 }
 
-// Display inline system notice bubbles
 function displaySystemNotice(text) {
     const noticeDiv = document.createElement('div');
     noticeDiv.className = 'message system-notice';
@@ -232,7 +256,7 @@ function displaySystemNotice(text) {
     chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
 }
 
-// 1. Fetch all conversations from backend SQLite database
+// Core API Actions
 async function loadConversations() {
     try {
         const conversations = await api.getConversations();
@@ -275,7 +299,6 @@ async function loadConversations() {
     }
 }
 
-// Handler to delete conversation
 async function handleDeleteConversation(conversationId) {
     if (!confirm('Are you sure you want to delete this chat?')) return;
 
@@ -292,16 +315,10 @@ async function handleDeleteConversation(conversationId) {
     }
 }
 
-// 2. Load selected conversation message history
-// frontend/js/app.js
-
 async function loadConversation(conversationId) {
     if (!conversationId) return;
 
-    // Set active ID FIRST so sidebar highlighting works correctly
     currentConversationId = conversationId;
-
-    // Re-render sidebar to update the active item styling
     await loadConversations();
 
     try {
@@ -330,25 +347,38 @@ async function loadConversation(conversationId) {
     }
 }
 
-// 3. Send message with command parsing and stream handlin
 async function sendMessage() {
-    const message = messageInput.value.trim();
-    if (!message) return;
+    const rawMessage = messageInput.value.trim();
+    if (!rawMessage) return;
 
     messageInput.value = '';
 
-    if (message.startsWith('/')) {
-        const isCommand = handleSlashCommand(message);
+    if (rawMessage.startsWith('/')) {
+        const isCommand = handleSlashCommand(rawMessage);
         if (isCommand) return;
     }
 
     const selectedModel = (modelSelector && modelSelector.value) ? modelSelector.value : 'gemma3-1b:latest';
 
-    displayMessage('user', message);
+    // 1. Capture attached file name BEFORE resetting session context
+    const attachedFile = sessionConfig.activeDocument ? sessionConfig.activeDocument.filename : null;
+
+    // 2. Display ONLY clean user prompt + badge in chat UI
+    displayMessage('user', rawMessage, attachedFile);
+
+    // 3. Construct hidden payload for Ollama backend
+    let payloadMessage = rawMessage;
+    if (sessionConfig.activeDocument) {
+        payloadMessage = `Document Context (${sessionConfig.activeDocument.filename}):\n---\n${sessionConfig.activeDocument.text}\n---\n\nUser Question: ${rawMessage}`;
+
+        // Clear attached doc state & hide UI pill
+        sessionConfig.activeDocument = null;
+        const docPill = document.getElementById('attachedDocPill');
+        if (docPill) docPill.style.display = 'none';
+    }
 
     const assistantMessageDiv = document.createElement('div');
     assistantMessageDiv.className = 'message assistant';
-
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
     assistantMessageDiv.appendChild(contentDiv);
@@ -361,10 +391,9 @@ async function sendMessage() {
     toggleGeneratingState(true);
 
     try {
-        // Force passing active currentConversationId to backend
         const result = await api.streamMessage(
             sessionConfig.historyEnabled ? currentConversationId : null,
-            message,
+            payloadMessage,
             selectedModel,
             (chunk) => {
                 fullText += chunk;
@@ -375,20 +404,10 @@ async function sendMessage() {
             sessionConfig
         );
 
-        if (sessionConfig.verbose) {
-            const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-            const statsDiv = document.createElement('div');
-            statsDiv.style.cssText = 'font-size: 11px; color: #64748b; margin-top: 6px; font-family: monospace;';
-            statsDiv.textContent = `⏱️ Generated in ${duration}s | Model: ${selectedModel} | History: ${sessionConfig.historyEnabled ? 'ON' : 'OFF'}`;
-            contentDiv.appendChild(statsDiv);
-        }
-
-        // --- FIX: Only set ID if this was a new conversation ---
         if (!currentConversationId && result.conversation_id) {
             currentConversationId = result.conversation_id;
         }
 
-        // Refresh sidebar titles without clearing currentConversationId
         await loadConversations();
 
     } catch (error) {
@@ -396,26 +415,53 @@ async function sendMessage() {
             contentDiv.innerHTML += ' <em>[Generation stopped]</em>';
         } else {
             contentDiv.innerHTML = `<em>Error: ${error.message}</em>`;
-            console.error('Streaming error:', error);
         }
     } finally {
         currentAbortController = null;
         toggleGeneratingState(false);
     }
 }
-
-// 4. Render message with Markdown parsing
-function displayMessage(role, content) {
+// Render message bubble, automatically stripping document context leaks
+function displayMessage(role, content, attachedFilename = null) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
 
-    if (role === 'assistant') {
+    if (role === 'user') {
+        let cleanText = content;
+        let detectedFilename = attachedFilename;
+
+        // Strip out Document Context wrapper if it leaked into the content string
+        const docContextMatch = cleanText.match(/^Document Context \((.*?)\):\n---\n[\s\S]*?\n---\n\nUser Question:\s*/);
+        if (docContextMatch) {
+            if (!detectedFilename) {
+                detectedFilename = docContextMatch[1]; // Extract filename from wrapper
+            }
+            cleanText = cleanText.replace(docContextMatch[0], ''); // Remove the raw PDF dump
+        }
+
+        // Render file badge if a document was attached
+        if (detectedFilename) {
+            const attachmentBadge = document.createElement('div');
+            attachmentBadge.className = 'user-attached-file';
+            attachmentBadge.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 1 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span>${detectedFilename}</span>
+            `;
+            contentDiv.appendChild(attachmentBadge);
+        }
+
+        const textSpan = document.createElement('div');
+        textSpan.textContent = cleanText;
+        contentDiv.appendChild(textSpan);
+
+    } else if (role === 'assistant') {
         contentDiv.innerHTML = marked.parse(content);
-    } else {
-        contentDiv.textContent = content;
     }
 
     messageDiv.appendChild(contentDiv);
@@ -423,16 +469,15 @@ function displayMessage(role, content) {
     chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
 }
 
-// 5. Reset UI for a fresh chat session
 function startNewChat() {
     currentConversationId = null;
+    sessionConfig.activeDocument = null;
     chatMessagesDiv.innerHTML = '';
     messageInput.value = '';
     messageInput.focus();
     loadConversations();
 }
 
-// 6. Load available Ollama Models into dropdown
 async function loadModels() {
     if (!modelSelector) return;
 
