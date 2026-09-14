@@ -293,9 +293,16 @@ async function handleDeleteConversation(conversationId) {
 }
 
 // 2. Load selected conversation message history
+// frontend/js/app.js
+
 async function loadConversation(conversationId) {
+    if (!conversationId) return;
+
+    // Set active ID FIRST so sidebar highlighting works correctly
     currentConversationId = conversationId;
-    loadConversations();
+
+    // Re-render sidebar to update the active item styling
+    await loadConversations();
 
     try {
         const data = await api.getMessages(conversationId);
@@ -323,14 +330,13 @@ async function loadConversation(conversationId) {
     }
 }
 
-// 3. Send message with command parsing and stream handling
+// 3. Send message with command parsing and stream handlin
 async function sendMessage() {
     const message = messageInput.value.trim();
     if (!message) return;
 
     messageInput.value = '';
 
-    // Intercept slash commands immediately
     if (message.startsWith('/')) {
         const isCommand = handleSlashCommand(message);
         if (isCommand) return;
@@ -355,6 +361,7 @@ async function sendMessage() {
     toggleGeneratingState(true);
 
     try {
+        // Force passing active currentConversationId to backend
         const result = await api.streamMessage(
             sessionConfig.historyEnabled ? currentConversationId : null,
             message,
@@ -376,10 +383,12 @@ async function sendMessage() {
             contentDiv.appendChild(statsDiv);
         }
 
+        // --- FIX: Only set ID if this was a new conversation ---
         if (!currentConversationId && result.conversation_id) {
             currentConversationId = result.conversation_id;
         }
 
+        // Refresh sidebar titles without clearing currentConversationId
         await loadConversations();
 
     } catch (error) {

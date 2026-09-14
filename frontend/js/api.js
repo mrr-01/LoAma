@@ -33,7 +33,7 @@ class OllamaAPI {
         return await response.json();
     }
 
-    // 3. Stream message tokens directly from Ollama (with abort signal & config support)
+    // 3. Stream message tokens directly from Ollama
     async streamMessage(conversationId, message, model, onChunk, signal = null, config = {}) {
         const response = await fetch(`${API_URL}/chat/stream`, {
             method: 'POST',
