@@ -53,7 +53,8 @@ Ensure you have the following installed:
 git clone [https://github.com/mrr-01/LoAma.git](https://github.com/mrr-01/LoAma.git)
 cd LoAma
 
-## 3. Setup and Start the Backend
+```
+## 2. Setup and Start the Backend
 cd backend
 
 # Create and activate a virtual environment
@@ -68,14 +69,14 @@ PYTHONPATH=. python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 The API will now be running at http://localhost:8000. You can inspect the interactive docs at http://localhost:8000/docs
 
-## 4. Start The FRONTEND
+## 3. Start The FRONTEND
 
 cd frontend
 
 # Serve static frontend files
 python3 -m http.server 3000
 
-## 5. Open The Application
+## 4. Open The Application
 Launch your browser and go to:
 
 👉 http://localhost:3000
