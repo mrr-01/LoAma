@@ -55,30 +55,40 @@ cd LoAma
 
 ```
 ## 2. Setup and Start the Backend
-cd backend
+```cd backend
+```
 
 # Create and activate a virtual environment
+```
 python3 -m venv .venv
 source .venv/bin/activate
+```
 
 # Install dependencies
+```
 pip install -r requirements.txt
+```
 
 # Run the backend API server
+```
 PYTHONPATH=. python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
 The API will now be running at http://localhost:8000. You can inspect the interactive docs at http://localhost:8000/docs
 
 ## 3. Start The FRONTEND
-
+```
 cd frontend
+```
 
 # Serve static frontend files
+```
 python3 -m http.server 3000
+```
 
 ## 4. Open The Application
 Launch your browser and go to:
-
+```
 👉 http://localhost:3000
-
+```
 Send a message in the chat box to begin chatting with your local model!
