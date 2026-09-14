@@ -11,7 +11,7 @@ class OllamaAPI {
         return await response.json();
     }
 
-    // 2. Send message to backend chat endpoint
+    // 2. Send message to backend chat endpoint (non-streaming fallback)
     async sendMessage(conversationId, message, model = 'gemma3-1b:latest') {
         const response = await fetch(`${API_URL}/chat`, {
             method: 'POST',
@@ -33,21 +33,49 @@ class OllamaAPI {
         return await response.json();
     }
 
-    // 3. Get list of past conversations
+    // 3. Stream message tokens directly from Ollama
+    async streamMessage(conversationId, message, model, onChunk) {
+        const response = await fetch(`${API_URL}/chat/stream`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                conversation_id: conversationId,
+                message: message,
+                model: model
+            })
+        });
+
+        if (!response.ok) throw new Error('Streaming failed');
+
+        const newConvId = response.headers.get('X-Conversation-Id');
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            onChunk(chunk);
+        }
+
+        return { conversation_id: newConvId };
+    }
+
+    // 4. Get list of past conversations
     async getConversations() {
         const response = await fetch(`${API_URL}/conversations`);
         if (!response.ok) throw new Error('Failed to fetch conversations');
         return await response.json();
     }
 
-    // 4. Get messages for a specific conversation
+    // 5. Get messages for a specific conversation
     async getMessages(conversationId) {
-        const response = await fetch(`${API_URL}/conversations/${conversationId}/messages`);
+        const response = await fetch(`${API_URL}/conversations/${conversationId}`);
         if (!response.ok) throw new Error('Failed to fetch messages');
         return await response.json();
     }
 
-    // 5. Delete a conversation
+    // 6. Delete a conversation
     async deleteConversation(conversationId) {
         const response = await fetch(`${API_URL}/conversations/${conversationId}`, {
             method: 'DELETE'

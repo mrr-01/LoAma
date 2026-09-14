@@ -137,3 +137,48 @@ class ChatService:
         conversation = self.get_conversation(conversation_id)
         self.db.delete(conversation)
         self.db.commit()
+
+    # Add this method to ChatService in backend/app/services/chat_service.py
+    async def stream_user_message(
+        self,
+        conversation_id: str,
+        message_content: str,
+        model_name: Optional[str] = None
+    ):
+        conversation = self.get_conversation(conversation_id)
+        selected_model = model_name or conversation.model_used or "gemma3-1b:latest"
+
+        if model_name and conversation.model_used != model_name:
+            conversation.model_used = model_name
+
+        # Save user message
+        user_msg = Message(
+            conversation_id=conversation_id,
+            role="user",
+            content=message_content
+        )
+        self.db.add(user_msg)
+
+        if conversation.title == "New Conversation":
+            conversation.title = self._generate_title(message_content)
+
+        conversation.updated_at = datetime.utcnow()
+        self.db.commit()
+
+        # Build prompt context
+        full_prompt = self._build_prompt(conversation)
+
+        # Stream from Ollama and collect complete response
+        full_response = ""
+        async for chunk in self.ollama.generate_stream(model=selected_model, prompt=full_prompt):
+            full_response += chunk
+            yield chunk
+
+        # Save complete assistant response once finished
+        assistant_msg = Message(
+            conversation_id=conversation_id,
+            role="assistant",
+            content=full_response
+        )
+        self.db.add(assistant_msg)
+        self.db.commit()
