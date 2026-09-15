@@ -13,7 +13,7 @@ LoAMA is a privacy-focused, locally-hosted LLM chat interface built with a FastA
 
 * **Frontend:** HTML5, CSS3, JavaScript (ES6+), Nginx
 * **Backend:** Python 3.11, FastAPI, SQLAlchemy, SQLite
-* **AI Engine:** Ollama (`gemma3-1b:latest`, `qwen3:latest`)
+* **AI Engine:** Ollama
 * **DevOps Infrastructure:** Docker, Docker Compose, GitHub Actions, Terraform *(in progress)*
 
 ---
