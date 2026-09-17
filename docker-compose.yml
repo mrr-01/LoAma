@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: ./backend
+    container_name: loama-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:////app/data/chat_history.db
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - DEBUG=True
+    volumes:
+      - backend_data:/app/data
+    extra_hosts:
+      host.docker.interal: host-gateway
+
+  frontend:
+    build: ./frontend
+    container_name: loama-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+       - backend
+
+volumes:
+  backend_data:

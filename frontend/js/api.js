@@ -1,6 +1,6 @@
 // frontend/js/api.js
 
-const API_URL = 'http://localhost:8000/api';
+const API_URL = '/api';
 
 class OllamaAPI {
     // 1. Fetch available Ollama models
@@ -84,6 +84,24 @@ class OllamaAPI {
             method: 'DELETE'
         });
         if (!response.ok) throw new Error('Failed to delete conversation');
+        return await response.json();
+    }
+    async uploadPDF(file, conversationId, model) {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (conversationId) formData.append('conversation_id', conversationId);
+        if (model) formData.append('model', model);
+
+        const response = await fetch(`${API_URL}/upload/pdf`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'Failed to upload and process PDF');
+        }
+
         return await response.json();
     }
 }
