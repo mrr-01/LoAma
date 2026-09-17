@@ -35,20 +35,23 @@ class OllamaAPI {
 
     // 3. Stream message tokens directly from Ollama (with abort signal & config support)
     async streamMessage(conversationId, message, model, onChunk, signal = null, config = {}) {
+        const payload = {
+            conversation_id: conversationId,
+            message: message,
+            model: model,
+            system_prompt: config.systemPrompt || null,
+            format_json: config.jsonFormat || false,
+            think: config.think || false
+        };
+
         const response = await fetch(`${API_URL}/chat/stream`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                conversation_id: conversationId,
-                message: message,
-                model: model,
-                system_prompt: config.systemPrompt || null,
-                format_json: config.jsonFormat || false
-            }),
+            body: JSON.stringify(payload),
             signal: signal
         });
 
-        if (!response.ok) throw new Error('Streaming failed');
+        if (!response.ok) throw new Error('Streaming request failed');
 
         const newConvId = response.headers.get('X-Conversation-Id');
         const reader = response.body.getReader();
