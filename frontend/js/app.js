@@ -134,9 +134,6 @@ document.addEventListener('click', (e) => {
     }
 });
 
-<<<<<<< HEAD
-// UI Helper Functions
-=======
 // Helper to render <think> reasoning tags into collapsible UI blocks
 function renderMarkdownWithReasoning(rawText) {
     if (!rawText) return '';
@@ -174,8 +171,8 @@ function renderMarkdownWithReasoning(rawText) {
 
     return marked.parse(rawText);
 }
+
 // Show autocomplete slash menu
->>>>>>> advanced-option
 function showCommandMenu(filterText) {
     if (!commandMenu) return;
 
@@ -401,18 +398,13 @@ async function sendMessage() {
 
     const selectedModel = (modelSelector && modelSelector.value) ? modelSelector.value : 'gemma3-1b:latest';
 
-    // 1. Capture attached file name BEFORE resetting session context
     const attachedFile = sessionConfig.activeDocument ? sessionConfig.activeDocument.filename : null;
-
-    // 2. Display ONLY clean user prompt + badge in chat UI
     displayMessage('user', rawMessage, attachedFile);
 
-    // 3. Construct hidden payload for Ollama backend
     let payloadMessage = rawMessage;
     if (sessionConfig.activeDocument) {
         payloadMessage = `Document Context (${sessionConfig.activeDocument.filename}):\n---\n${sessionConfig.activeDocument.text}\n---\n\nUser Question: ${rawMessage}`;
 
-        // Clear attached doc state & hide UI pill
         sessionConfig.activeDocument = null;
         const docPill = document.getElementById('attachedDocPill');
         if (docPill) docPill.style.display = 'none';
@@ -422,11 +414,20 @@ async function sendMessage() {
     assistantMessageDiv.className = 'message assistant';
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
+
+    // Set initial loading state inside contentDiv before stream starts
+    contentDiv.innerHTML = `
+        <div class="typing-indicator" style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 0; color: #94a3b8; font-size: 13px; font-style: italic;">
+            Processing <span style="width: 5px; height: 5px; background: #6366f1; border-radius: 50%; display: inline-block; animation: pulse 1.4s infinite ease-in-out both -0.32s;"></span><span style="width: 5px; height: 5px; background: #6366f1; border-radius: 50%; display: inline-block; animation: pulse 1.4s infinite ease-in-out both -0.16s;"></span><span style="width: 5px; height: 5px; background: #6366f1; border-radius: 50%; display: inline-block; animation: pulse 1.4s infinite ease-in-out both;"></span>
+        </div>
+    `;
+
     assistantMessageDiv.appendChild(contentDiv);
     chatMessagesDiv.appendChild(assistantMessageDiv);
+    chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
 
     let fullText = '';
-    const startTime = Date.now();
+    let isFirstChunk = true;
 
     currentAbortController = new AbortController();
     toggleGeneratingState(true);
@@ -437,6 +438,12 @@ async function sendMessage() {
             payloadMessage,
             selectedModel,
             (chunk) => {
+                // Clear the loading indicator upon receiving the very first chunk
+                if (isFirstChunk) {
+                    contentDiv.innerHTML = '';
+                    isFirstChunk = false;
+                }
+
                 fullText += chunk;
                 contentDiv.innerHTML = renderMarkdownWithReasoning(fullText);
                 chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
@@ -462,21 +469,15 @@ async function sendMessage() {
         toggleGeneratingState(false);
     }
 }
-<<<<<<< HEAD
+
 // Render message bubble, automatically stripping document context leaks
 function displayMessage(role, content, attachedFilename = null) {
-=======
-
-// 4. Render message with Markdown & Think parsing
-function displayMessage(role, content) {
->>>>>>> advanced-option
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
 
-<<<<<<< HEAD
     if (role === 'user') {
         let cleanText = content;
         let detectedFilename = attachedFilename;
@@ -487,7 +488,7 @@ function displayMessage(role, content) {
             if (!detectedFilename) {
                 detectedFilename = docContextMatch[1]; // Extract filename from wrapper
             }
-            cleanText = cleanText.replace(docContextMatch[0], ''); // Remove the raw PDF dump
+            cleanText = cleanText.replace(docContextMatch[0], ''); // Remove raw PDF dump
         }
 
         // Render file badge if a document was attached
@@ -509,13 +510,7 @@ function displayMessage(role, content) {
         contentDiv.appendChild(textSpan);
 
     } else if (role === 'assistant') {
-        contentDiv.innerHTML = marked.parse(content);
-=======
-    if (role === 'assistant') {
         contentDiv.innerHTML = renderMarkdownWithReasoning(content);
-    } else {
-        contentDiv.textContent = content;
->>>>>>> advanced-option
     }
 
     messageDiv.appendChild(contentDiv);
