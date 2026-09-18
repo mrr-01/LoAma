@@ -33,6 +33,16 @@ class ChatRequest(BaseModel):
         description="Model to use"
     )
 
+class ChatStreamRequest(BaseModel):
+    """Shape of incoming streaming chat request with slash command options"""
+    conversation_id: Optional[str] = None
+    message: str
+    model: str = "gemma3-1b:latest"
+    system_prompt: Optional[str] = None
+    format_json: bool = False
+    think: bool = False
+    history_enabled: bool = True
+
 class ChatResponse(BaseModel):
     """Shape of chat endpoint response"""
     conversation_id: str

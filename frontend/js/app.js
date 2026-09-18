@@ -134,7 +134,48 @@ document.addEventListener('click', (e) => {
     }
 });
 
+<<<<<<< HEAD
 // UI Helper Functions
+=======
+// Helper to render <think> reasoning tags into collapsible UI blocks
+function renderMarkdownWithReasoning(rawText) {
+    if (!rawText) return '';
+
+    // If thinking is disabled via /set nothink, strip <think>...</think> blocks entirely
+    if (!sessionConfig.think) {
+        const strippedText = rawText.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '').trim();
+        return marked.parse(strippedText);
+    }
+
+    let processedText = rawText;
+    const thinkRegex = /<think>([\s\S]*?)(?:<\/think>|$)/gi;
+
+    if (thinkRegex.test(rawText)) {
+        processedText = rawText.replace(thinkRegex, (match, thinkContent) => {
+            const parsedThink = marked.parse(thinkContent.trim());
+            return `
+                <details class="think-block" open style="background: #1e293b; border-left: 3px solid #6366f1; padding: 8px 12px; margin-bottom: 12px; border-radius: 4px;">
+                    <summary style="font-size: 12px; color: #818cf8; font-weight: 600; cursor: pointer; user-select: none;">
+                        🧠 Thought Process
+                    </summary>
+                    <div class="think-content" style="font-size: 13px; color: #94a3b8; margin-top: 6px;">
+                        ${parsedThink}
+                    </div>
+                </details>
+            `;
+        });
+
+        const nonThinkText = rawText.replace(/<think>[\s\S]*?(?:<\/think>|$)/gi, '');
+        return processedText.replace(
+            nonThinkText,
+            nonThinkText.trim() ? marked.parse(nonThinkText) : ''
+        );
+    }
+
+    return marked.parse(rawText);
+}
+// Show autocomplete slash menu
+>>>>>>> advanced-option
 function showCommandMenu(filterText) {
     if (!commandMenu) return;
 
@@ -397,7 +438,7 @@ async function sendMessage() {
             selectedModel,
             (chunk) => {
                 fullText += chunk;
-                contentDiv.innerHTML = marked.parse(fullText);
+                contentDiv.innerHTML = renderMarkdownWithReasoning(fullText);
                 chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
             },
             currentAbortController.signal,
@@ -421,14 +462,21 @@ async function sendMessage() {
         toggleGeneratingState(false);
     }
 }
+<<<<<<< HEAD
 // Render message bubble, automatically stripping document context leaks
 function displayMessage(role, content, attachedFilename = null) {
+=======
+
+// 4. Render message with Markdown & Think parsing
+function displayMessage(role, content) {
+>>>>>>> advanced-option
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
 
     const contentDiv = document.createElement('div');
     contentDiv.className = 'message-content';
 
+<<<<<<< HEAD
     if (role === 'user') {
         let cleanText = content;
         let detectedFilename = attachedFilename;
@@ -462,6 +510,12 @@ function displayMessage(role, content, attachedFilename = null) {
 
     } else if (role === 'assistant') {
         contentDiv.innerHTML = marked.parse(content);
+=======
+    if (role === 'assistant') {
+        contentDiv.innerHTML = renderMarkdownWithReasoning(content);
+    } else {
+        contentDiv.textContent = content;
+>>>>>>> advanced-option
     }
 
     messageDiv.appendChild(contentDiv);
