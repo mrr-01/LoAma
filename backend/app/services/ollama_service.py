@@ -22,8 +22,12 @@ class OllamaService:
     """
 
     def __init__(self, base_url: Optional[str] = None):
-        self.base_url = base_url or os.getenv("OLLAMA_URL", "http://localhost:11434")
-        self.timeout = 300  # 5 minutes (models can be slow)
+        self.base_url = (
+            base_url
+            or os.getenv("OLLAMA_BASE_URL")
+            or os.getenv("OLLAMA_URL", "http://host.docker.internal:11434")
+        )
+        self.timeout = 300  # 5 minutes for non-streaming requests
 
     async def generate_stream(
         self,
@@ -51,15 +55,24 @@ class OllamaService:
         if options:
             payload["options"] = options
 
+        # Configure granular timeouts so long prompt evaluations don't drop the connection
+        stream_timeout = httpx.Timeout(
+            connect=10.0,
+            read=300.0,   # 5-minute read timeout between tokens for heavy prompt processing
+            write=10.0,
+            pool=10.0
+        )
+
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=stream_timeout) as client:
                 async with client.stream(
                     "POST",
                     f"{self.base_url}/api/generate",
                     json=payload
                 ) as response:
                     if response.status_code != 200:
-                        logger.error(f"Ollama returned status {response.status_code}")
+                        error_body = await response.aread()
+                        logger.error(f"Ollama error status {response.status_code}: {error_body.decode()}")
                         yield f"Error from Ollama service: Status {response.status_code}"
                         return
 
@@ -72,13 +85,13 @@ class OllamaService:
                                     yield chunk
                             except json.JSONDecodeError:
                                 continue
-        except httpx.RequestError as e:
-            logger.info(f"Stream interrupted or failed: {e}")
+
+        except Exception as e:
+            logger.error(f"Stream interrupted or failed: {type(e).__name__} - {e}")
+            yield f"\n[Stream interrupted: {type(e).__name__}]"
 
     def _make_request(self, endpoint: str, method: str = "GET", json_data: Dict = None) -> Dict:
-        """
-        Helper method to make HTTP requests to Ollama.
-        """
+        """Helper method to make HTTP requests to Ollama."""
         url = f"{self.base_url}{endpoint}"
 
         try:
@@ -105,9 +118,7 @@ class OllamaService:
             raise OllamaConnectionError(f"Ollama error: {e}")
 
     def list_models(self) -> List[str]:
-        """
-        Get list of available models.
-        """
+        """Get list of available models."""
         try:
             response = self._make_request("/api/tags")
             models = [model["name"] for model in response.get("models", [])]
@@ -120,9 +131,7 @@ class OllamaService:
             raise OllamaConnectionError(f"Failed to list models: {e}")
 
     def generate(self, model: str, prompt: str, stream: bool = False) -> Dict:
-        """
-        Send prompt to model, get response.
-        """
+        """Send prompt to model, get response."""
         try:
             logger.info(f"Generating with model={model}")
 

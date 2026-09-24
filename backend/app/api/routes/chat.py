@@ -7,6 +7,7 @@ from app.services.ollama_service import OllamaService, OllamaConnectionError
 from app.schemas.chat import ChatRequest, ChatResponse, ChatStreamRequest
 import logging
 import httpx
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +16,10 @@ router = APIRouter(prefix="/api", tags=["chat"])
 @router.get("/models")
 async def get_available_models():
     """Fetches locally installed models directly from Ollama."""
+    ollama_host = os.getenv("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            res = await client.get("http://127.0.0.1:11434/api/tags")
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            res = await client.get(f"{ollama_host}/api/tags")
             if res.status_code == 200:
                 data = res.json()
                 models = [model["name"] for model in data.get("models", [])]
