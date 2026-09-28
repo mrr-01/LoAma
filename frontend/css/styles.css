@@ -18,18 +18,25 @@
     box-sizing: border-box;
 }
 
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background-color: var(--bg-main);
     color: var(--text-primary);
-    height: 100vh;
-    overflow: hidden;
 }
 
 .app-container {
     display: flex;
-    width: 100vw;
     height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile/desktop browsers */
+    width: 100vw;
+    overflow: hidden;
 }
 
 /* --- DeepSeek Sidebar --- */
@@ -42,6 +49,7 @@ body {
     flex-direction: column;
     padding: 14px;
     height: 100%;
+    flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -119,7 +127,6 @@ body {
     gap: 2px;
 }
 
-/* Delete button styling inside sidebar items */
 .conversation-item {
     display: flex;
     align-items: center;
@@ -165,7 +172,7 @@ body {
 }
 
 .delete-chat-btn:hover {
-    color: #ef4444; /* Bright Red */
+    color: #ef4444;
     background-color: rgba(239, 68, 68, 0.15);
 }
 
@@ -216,6 +223,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-width: 0; /* Critical: allows content to shrink smoothly on window resize */
     position: relative;
     background-color: var(--bg-main);
 }
@@ -226,18 +234,50 @@ body {
     align-items: center;
     padding: 0 24px;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
-.model-badge {
+/* Model Selector Dropdown */
+.model-select-wrapper {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    background: rgba(255, 255, 255, 0.03);
-    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 4px 12px;
     border-radius: 20px;
     border: 1px solid var(--border-color);
+    transition: border-color 0.15s ease;
+}
+
+.model-select-wrapper:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.model-select {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 16px;
+}
+
+.model-select option {
+    background-color: var(--bg-sidebar);
+    color: var(--text-primary);
+}
+
+.dropdown-icon {
+    position: absolute;
+    right: 10px;
+    pointer-events: none;
+    color: var(--text-secondary);
 }
 
 .status-dot {
@@ -255,6 +295,20 @@ body {
     display: flex;
     flex-direction: column;
     gap: 24px;
+    scroll-behavior: smooth;
+}
+
+/* Responsive adjustment for chat container padding on narrower screens */
+@media (max-width: 1024px) {
+    .chat-messages {
+        padding: 24px 8%;
+    }
+}
+
+@media (max-width: 640px) {
+    .chat-messages {
+        padding: 16px 4%;
+    }
 }
 
 .message {
@@ -282,6 +336,7 @@ body {
 .message-content {
     font-size: 14.5px;
     line-height: 1.65;
+    word-break: break-word;
 }
 
 .message.user .message-content {
@@ -331,10 +386,25 @@ body {
 
 /* --- Floating DeepSeek Input Bar --- */
 .input-wrapper {
+    position: relative;
+    width: 100%;
     padding: 0 18% 20px 18%;
     display: flex;
     flex-direction: column;
     align-items: center;
+    flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+    .input-wrapper {
+        padding: 0 8% 16px 8%;
+    }
+}
+
+@media (max-width: 640px) {
+    .input-wrapper {
+        padding: 0 4% 12px 4%;
+    }
 }
 
 .input-box {
@@ -344,14 +414,22 @@ body {
     border-radius: 16px;
     padding: 10px 14px;
     display: flex;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column;
+    gap: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
     transition: border-color 0.2s ease;
 }
 
 .input-box:focus-within {
     border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Action Controls Row (Textarea + Buttons) */
+.input-controls-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    width: 100%;
 }
 
 #messageInput {
@@ -363,14 +441,16 @@ body {
     font-size: 14px;
     resize: none;
     font-family: inherit;
-    max-height: 150px;
+    line-height: 1.5;
+    max-height: 200px;
+    padding: 2px 0;
 }
 
 #messageInput::placeholder {
     color: var(--text-muted);
 }
 
-#sendBtn {
+#sendBtn, #stopBtn {
     background-color: var(--accent-blue);
     border: none;
     color: white;
@@ -381,7 +461,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.15s ease;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
     flex-shrink: 0;
 }
 
@@ -389,151 +469,16 @@ body {
     background-color: var(--accent-blue-hover);
 }
 
-.disclaimer {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 8px;
-    text-align: center;
-}
-
-.loading .message-content {
-    color: var(--text-secondary);
-    font-style: italic;
-}
-/* Model Selector Dropdown */
-.model-select-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.04);
-    padding: 4px 12px;
-    border-radius: 20px;
-    border: 1px solid var(--border-color);
-    transition: border-color 0.15s ease;
-}
-
-.model-select-wrapper:hover {
-    border-color: rgba(255, 255, 255, 0.15);
-}
-
-.model-select {
-    background: transparent;
-    border: none;
-    outline: none;
-    color: var(--text-primary);
-    font-size: 12px;
-    font-family: inherit;
-    font-weight: 500;
-    cursor: pointer;
-    appearance: none;
-    -webkit-appearance: none;
-    padding-right: 16px;
-}
-
-.model-select option {
-    background-color: var(--bg-sidebar);
-    color: var(--text-primary);
-}
-
-.dropdown-icon {
-    position: absolute;
-    right: 10px;
-    pointer-events: none;
-    color: var(--text-secondary);
-}
-
 #stopBtn {
     background-color: var(--text-primary);
-    border: none;
     color: var(--bg-main);
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: opacity 0.15s ease;
-    flex-shrink: 0;
 }
 
 #stopBtn:hover {
     opacity: 0.85;
 }
 
-/* Ensure relative positioning on wrapper */
-.input-wrapper {
-    position: relative;
-    width: 100%;
-}
-
-/* Floating Slash Command Menu */
-.command-menu {
-    position: absolute;
-    bottom: 100%;
-    left: 0;
-    right: 0;
-    background-color: #1e222b;
-    border: 1px solid #343b48;
-    border-radius: 8px;
-    margin-bottom: 8px;
-    max-height: 220px;
-    overflow-y: auto;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
-    z-index: 100;
-}
-
-.command-item {
-    padding: 10px 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    font-size: 13px;
-    color: #e2e8f0;
-    border-bottom: 1px solid #2a2f3d;
-    transition: background-color 0.15s ease;
-}
-
-.command-item:last-child {
-    border-bottom: none;
-}
-
-.command-item:hover {
-    background-color: #2a303c;
-    color: #60a5fa;
-}
-
-/* Hide scrollbar for Chrome, Safari, and Opera */
-.conversations-list::-webkit-scrollbar,
-.chat-messages::-webkit-scrollbar,
-.command-menu::-webkit-scrollbar,
-textarea#messageInput::-webkit-scrollbar {
-    display: none;
-}
-
-/* Hide scrollbar for IE, Edge, and Firefox */
-.conversations-list,
-.chat-messages,
-.command-menu,
-textarea#messageInput {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-}
-
-/* Container for input area */
-.input-box {
-    display: flex;
-    flex-direction: column;
-    background-color: var(--bg-secondary, #1e222b);
-    border: 1px solid var(--border-color, #2d333f);
-    border-radius: 12px;
-    padding: 8px 12px;
-    gap: 8px;
-}
-
-/* Document Pill Container (Stack above textarea) */
+/* Document Pill Container (Stacked above textarea) */
 .doc-pill {
     display: inline-flex;
     align-items: center;
@@ -561,23 +506,62 @@ textarea#messageInput {
     color: #ef4444;
 }
 
-/* Action Controls Row (Textarea + Buttons) */
-.input-controls-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
+.disclaimer {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    text-align: center;
 }
 
-.input-controls-row textarea {
-    flex: 1;
-    background: transparent;
-    border: none;
-    color: var(--text-primary, #e2e8f0);
-    outline: none;
-    resize: none;
-    font-family: inherit;
-    font-size: 14px;
+/* Floating Slash Command Menu */
+.command-menu {
+    position: absolute;
+    bottom: 100%;
+    left: 18%;
+    right: 18%;
+    background-color: #1e222b;
+    border: 1px solid #343b48;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+    z-index: 100;
+}
+
+@media (max-width: 1024px) {
+    .command-menu {
+        left: 8%;
+        right: 8%;
+    }
+}
+
+@media (max-width: 640px) {
+    .command-menu {
+        left: 4%;
+        right: 4%;
+    }
+}
+
+.command-item {
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    font-size: 13px;
+    color: #e2e8f0;
+    border-bottom: 1px solid #2a2f3d;
+    transition: background-color 0.15s ease;
+}
+
+.command-item:last-child {
+    border-bottom: none;
+}
+
+.command-item:hover {
+    background-color: #2a303c;
+    color: #60a5fa;
 }
 
 /* Attached PDF badge inside user chat bubble */
@@ -616,7 +600,7 @@ textarea#messageInput {
     background-color: #6366f1;
     border-radius: 50%;
     display: inline-block;
-    animation: bounce 1.4s infinite ease-in-out both;
+    animation: pulse 1.4s infinite ease-in-out both;
 }
 
 .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
@@ -631,4 +615,23 @@ textarea#messageInput {
         transform: scale(1);
         opacity: 1;
     }
+}
+
+/* Scrollbar rules */
+.conversations-list::-webkit-scrollbar,
+.chat-messages::-webkit-scrollbar,
+.command-menu::-webkit-scrollbar,
+textarea#messageInput::-webkit-scrollbar {
+    width: 6px;
+}
+
+.conversations-list::-webkit-scrollbar-thumb,
+.chat-messages::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+}
+
+.conversations-list::-webkit-scrollbar-thumb:hover,
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
