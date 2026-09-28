@@ -683,3 +683,47 @@ textarea#messageInput {
     color: var(--text-primary, #ecedf1);
     background-color: rgba(255, 255, 255, 0.05);
 }
+
+/* --- Sleek Custom Scrollbars --- */
+
+/* Scrollbar track width and height */
+.history-section::-webkit-scrollbar,
+.chat-messages::-webkit-scrollbar,
+.command-menu::-webkit-scrollbar,
+textarea#messageInput::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+}
+
+/* Scrollbar Track (Background) */
+.history-section::-webkit-scrollbar-track,
+.chat-messages::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Scrollbar Thumb (Draggable Handle) */
+.history-section::-webkit-scrollbar-thumb,
+.chat-messages::-webkit-scrollbar-thumb,
+.command-menu::-webkit-scrollbar-thumb,
+textarea#messageInput::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    transition: background-color 0.2s ease;
+}
+
+/* Scrollbar Thumb Hover State */
+.history-section::-webkit-scrollbar-thumb:hover,
+.chat-messages::-webkit-scrollbar-thumb:hover,
+.command-menu::-webkit-scrollbar-thumb:hover,
+textarea#messageInput::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* Firefox Support */
+.history-section,
+.chat-messages,
+.command-menu,
+textarea#messageInput {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
