@@ -359,19 +359,21 @@ body {
     background: transparent;
     border: none;
     outline: none;
-    color: var(--text-primary);
+    color: var(--text-primary, #ecedf1);
     font-size: 14px;
     resize: none;
     font-family: inherit;
-    max-height: 150px;
+    line-height: 1.5;
+    max-height: 200px;
+    padding: 2px 0;
 }
 
 #messageInput::placeholder {
-    color: var(--text-muted);
-}
+    color: var(--text-muted, #616678);}
 
-#sendBtn {
-    background-color: var(--accent-blue);
+/* Action Buttons (Send / Stop) */
+#sendBtn, #stopBtn {
+    background-color: var(--accent-blue, #4d6bfe);
     border: none;
     color: white;
     width: 32px;
@@ -381,12 +383,25 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.15s ease;
+    transition: background-color 0.15s ease, transform 0.1s ease;
     flex-shrink: 0;
 }
 
 #sendBtn:hover {
-    background-color: var(--accent-blue-hover);
+    background-color: var(--accent-blue-hover, #3b59eb);
+}
+
+#sendBtn:active, #stopBtn:active {
+    transform: scale(0.95);
+}
+
+#stopBtn {
+    background-color: #ef4444; /* Bright Red for stopping generation */
+    color: white;
+}
+
+#stopBtn:hover {
+    background-color: #dc2626;
 }
 
 .disclaimer {
@@ -466,6 +481,11 @@ body {
 .input-wrapper {
     position: relative;
     width: 100%;
+    padding: 0 18% 20px 18%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
 }
 
 /* Floating Slash Command Menu */
@@ -524,13 +544,16 @@ textarea#messageInput {
 
 /* Container for input area */
 .input-box {
+    width: 100%;
+    background-color: var(--bg-input, #282a36);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.08));
+    border-radius: 16px;
+    padding: 10px 14px;
     display: flex;
     flex-direction: column;
-    background-color: var(--bg-secondary, #1e222b);
-    border: 1px solid var(--border-color, #2d333f);
-    border-radius: 12px;
-    padding: 8px 12px;
     gap: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    transition: border-color 0.2s ease;
 }
 
 /* Document Pill Container (Stack above textarea) */
@@ -631,4 +654,32 @@ textarea#messageInput {
         transform: scale(1);
         opacity: 1;
     }
+}
+
+@media (max-width: 1024px) {
+    .input-wrapper { padding: 0 8% 16px 8%; }
+}
+
+@media (max-width: 640px) {
+    .input-wrapper { padding: 0 4% 12px 4%; }
+}
+
+/* Attachment Button */
+.icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted, #616678);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 6px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.icon-btn:hover {
+    color: var(--text-primary, #ecedf1);
+    background-color: rgba(255, 255, 255, 0.05);
 }
