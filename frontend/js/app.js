@@ -33,11 +33,38 @@ const AVAILABLE_COMMANDS = [
 
 // Configure Marked to use Highlight.js and inject a Copy button into code snippets
 const renderer = new marked.Renderer();
-renderer.code = function(code, lang) {
-    const strCode = typeof code === 'string' ? code : String(code || '');
+renderer.code = function(codeArg, langArg) {
+    let code = '';
+    let lang = '';
+
+    // Handle Marked v12+ token object signature vs legacy string args
+    if (typeof codeArg === 'object' && codeArg !== null) {
+        code = codeArg.text || '';
+        lang = codeArg.lang || '';
+    } else {
+        code = String(codeArg || '');
+        lang = String(langArg || '');
+    }
+
     const language = (lang && hljs.getLanguage(lang)) ? lang : 'plaintext';
-    const highlighted = hljs.highlight(strCode, { language }).value;
-    const safeCode = strCode.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    let highlighted = '';
+
+    try {
+        highlighted = hljs.highlight(code, { language }).value;
+    } catch (e) {
+        highlighted = code
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    // Escape code for data attribute inside button
+    const safeCode = code
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 
     return `
         <div class="code-block-wrapper" style="position: relative; margin: 12px 0; border-radius: 6px; overflow: hidden; background: #16181d; border: 1px solid var(--border-color, #2d333f);">
