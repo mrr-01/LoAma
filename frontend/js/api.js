@@ -89,6 +89,22 @@ class OllamaAPI {
         if (!response.ok) throw new Error('Failed to delete conversation');
         return await response.json();
     }
+    async uploadPDF(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/upload/pdf', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Upload failed with status ${response.status}`);
+        }
+
+        return await response.json(); // Returns { filename: "...", extracted_text: "..." }
+    }
 }
 
 // Instantiate API globally
