@@ -3,6 +3,7 @@
 // State variables
 let currentConversationId = null;
 let currentAbortController = null;
+let userIsScrolledUp = false;
 
 // Global chat session options set via slash commands
 const sessionConfig = {
@@ -30,14 +31,51 @@ const AVAILABLE_COMMANDS = [
     { cmd: '/set nothink', desc: 'Disable model reasoning process' }
 ];
 
-// Configure Marked to use Highlight.js for code snippets
+// Configure Marked to use Highlight.js and inject a Copy button into code snippets
+const renderer = new marked.Renderer();
+renderer.code = function(code, lang) {
+    const strCode = typeof code === 'string' ? code : String(code || '');
+    const language = (lang && hljs.getLanguage(lang)) ? lang : 'plaintext';
+    const highlighted = hljs.highlight(strCode, { language }).value;
+    const safeCode = strCode.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    return `
+        <div class="code-block-wrapper" style="position: relative; margin: 12px 0; border-radius: 6px; overflow: hidden; background: #16181d; border: 1px solid var(--border-color, #2d333f);">
+            <div class="code-block-header" style="display: flex; justify-content: space-between; align-items: center; background: #21232b; padding: 6px 12px; font-size: 11px; color: #94a3b8; font-family: monospace;">
+                <span>${language}</span>
+                <button class="copy-code-btn" onclick="copyCodeSnippet(this)" data-code="${safeCode}" style="background: transparent; border: 1px solid #334155; color: #e2e8f0; font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                    📋 Copy
+                </button>
+            </div>
+            <pre style="margin: 0; padding: 12px; overflow-x: auto;"><code class="hljs language-${language}">${highlighted}</code></pre>
+        </div>
+    `;
+};
+
 marked.setOptions({
-    highlight: function(code, lang) {
-        const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-        return hljs.highlight(code, { language }).value;
-    },
+    renderer: renderer,
     breaks: true
 });
+
+// Global copy helper for code snippet buttons
+window.copyCodeSnippet = function(button) {
+    const rawCode = button.getAttribute('data-code');
+
+    navigator.clipboard.writeText(rawCode).then(() => {
+        const originalText = button.innerHTML;
+        button.innerHTML = '✅ Copied!';
+        button.style.borderColor = '#10b981';
+        button.style.color = '#10b981';
+
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.borderColor = '#334155';
+            button.style.color = '#e2e8f0';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy code: ', err);
+    });
+};
 
 // DOM Elements
 const chatMessagesDiv = document.getElementById('chatMessages');
@@ -108,7 +146,8 @@ if (stopBtn) {
 }
 
 if (messageInput) {
-    messageInput.addEventListener('keypress', (e) => {
+    // Send on Enter (without Shift), allow multi-line with Shift+Enter
+    messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             hideCommandMenu();
@@ -116,13 +155,28 @@ if (messageInput) {
         }
     });
 
-    messageInput.addEventListener('input', (e) => {
-        const val = e.target.value;
+    // Auto-expand textarea height as user types or pastes multi-line text
+    messageInput.addEventListener('input', function () {
+        this.style.height = 'auto'; // Reset calculation height
+        this.style.height = Math.min(this.scrollHeight, 200) + 'px'; // Cap max height at 200px
+
+        const val = this.value;
         if (val.startsWith('/')) {
             showCommandMenu(val);
         } else {
             hideCommandMenu();
         }
+    });
+}
+
+// Track manual scrolling in the chat message stream
+if (chatMessagesDiv) {
+    chatMessagesDiv.addEventListener('scroll', () => {
+        const distanceFromBottom =
+            chatMessagesDiv.scrollHeight - chatMessagesDiv.scrollTop - chatMessagesDiv.clientHeight;
+
+        // Pause auto-scrolling if user scrolls up more than 50px
+        userIsScrolledUp = distanceFromBottom > 50;
     });
 }
 
@@ -134,9 +188,13 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Helper to render <think> reasoning tags into collapsible UI blocks
+// Helper to render <think> reasoning tags into collapsible UI blocks with input guards
 function renderMarkdownWithReasoning(rawText) {
-    if (!rawText) return '';
+    if (rawText === null || rawText === undefined) return '';
+    if (typeof rawText !== 'string') {
+        rawText = String(rawText);
+    }
+    if (!rawText.trim()) return '';
 
     // If thinking is disabled via /set nothink, strip <think>...</think> blocks entirely
     if (!sessionConfig.think) {
@@ -389,7 +447,9 @@ async function sendMessage() {
     const rawMessage = messageInput.value.trim();
     if (!rawMessage) return;
 
+    // Reset input box value and collapse height back to single line
     messageInput.value = '';
+    messageInput.style.height = 'auto';
 
     if (rawMessage.startsWith('/')) {
         const isCommand = handleSlashCommand(rawMessage);
@@ -424,6 +484,9 @@ async function sendMessage() {
 
     assistantMessageDiv.appendChild(contentDiv);
     chatMessagesDiv.appendChild(assistantMessageDiv);
+
+    // Initial auto-scroll to reveal new prompt and loading indicator
+    userIsScrolledUp = false;
     chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
 
     let fullText = '';
@@ -438,15 +501,20 @@ async function sendMessage() {
             payloadMessage,
             selectedModel,
             (chunk) => {
-                // Clear the loading indicator upon receiving the very first chunk
+                // Clear loading indicator on first token
                 if (isFirstChunk) {
                     contentDiv.innerHTML = '';
                     isFirstChunk = false;
+                    userIsScrolledUp = false;
                 }
 
                 fullText += chunk;
                 contentDiv.innerHTML = renderMarkdownWithReasoning(fullText);
-                chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+
+                // Smart auto-scroll: only scroll down if user hasn't scrolled up manually
+                if (!userIsScrolledUp) {
+                    chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+                }
             },
             currentAbortController.signal,
             sessionConfig
@@ -515,7 +583,10 @@ function displayMessage(role, content, attachedFilename = null) {
 
     messageDiv.appendChild(contentDiv);
     chatMessagesDiv.appendChild(messageDiv);
-    chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+
+    if (!userIsScrolledUp) {
+        chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+    }
 }
 
 function startNewChat() {
@@ -523,6 +594,7 @@ function startNewChat() {
     sessionConfig.activeDocument = null;
     chatMessagesDiv.innerHTML = '';
     messageInput.value = '';
+    messageInput.style.height = 'auto';
     messageInput.focus();
     loadConversations();
 }
